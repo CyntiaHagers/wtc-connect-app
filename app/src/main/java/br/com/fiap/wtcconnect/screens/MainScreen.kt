@@ -20,6 +20,9 @@ import androidx.navigation.compose.rememberNavController
 import br.com.fiap.wtcconnect.screens.campaigns.CampaignsScreen
 import br.com.fiap.wtcconnect.screens.chat.ChatScreen
 import br.com.fiap.wtcconnect.screens.clients.ClientsScreen
+import br.com.fiap.wtcconnect.screens.profile.ChangePasswordScreen
+import br.com.fiap.wtcconnect.screens.profile.HelpScreen
+import br.com.fiap.wtcconnect.screens.profile.NotificationsScreen
 import br.com.fiap.wtcconnect.screens.profile.ProfileScreen
 import br.com.fiap.wtcconnect.ui.theme.AccentGreen
 import br.com.fiap.wtcconnect.ui.theme.AccentOrange
@@ -102,6 +105,44 @@ fun NavigationGraph(navController: androidx.navigation.NavHostController) {
         composable(BottomNavItem.Chat.route) { ChatScreen() }
         composable(BottomNavItem.Campaigns.route) { CampaignsScreen() }
         composable(BottomNavItem.Clients.route) { ClientsScreen() }
-        composable(BottomNavItem.Profile.route) { ProfileScreen() }
+        composable(BottomNavItem.Profile.route) {
+            ProfileScreen(
+                onNavigateToChangePassword = {
+                    navController.navigate("change_password")
+                },
+                onNavigateToNotifications = {
+                    navController.navigate("notifications")
+                },
+                onNavigateToHelp = {
+                    navController.navigate("help")
+                }
+            )
+        }
+
+        // Novas rotas para as telas de configuração
+        composable("change_password") {
+            ChangePasswordScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("notifications") {
+            NotificationsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("help") {
+            HelpScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
+

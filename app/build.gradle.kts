@@ -90,4 +90,10 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // Coil para carregar imagens
+    implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Activity Result APIs (já incluído no androidx.activity:activity-compose)
+    implementation("androidx.activity:activity-compose:1.9.0")
 }
