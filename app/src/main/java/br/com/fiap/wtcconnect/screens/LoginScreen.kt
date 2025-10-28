@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,16 +26,36 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.fiap.wtcconnect.R // Supondo que o logo está em res/drawable
 import br.com.fiap.wtcconnect.ui.theme.RoyalBlue
 import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
+import br.com.fiap.wtcconnect.viewmodel.AuthViewModel
+import br.com.fiap.wtcconnect.viewmodel.UserType
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    onLoginSuccess: (UserType) -> Unit,
+    onNavigateToRegister: () -> Unit,
+    viewModel: AuthViewModel = viewModel()
+) {
+    val authState by viewModel.authState.collectAsState()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isOperator by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    LaunchedEffect(authState.isAuthenticated) {
+        if (authState.isAuthenticated) {
+            // register pending fcm token if present
+            authState.userId?.let { uid ->
+                br.com.fiap.wtcconnect.notifications.FcmTokenManager.registerPendingTokenIfAny(context, uid)
+            }
+            onLoginSuccess(authState.userType)
+        }
+    }
 
     LaunchedEffect(Unit) {
         visible = true
@@ -151,19 +173,84 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Error Message Display
+                if (authState.errorMessage != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = Color(0xFFC62828),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = authState.errorMessage ?: "",
+                                color = Color(0xFFC62828),
+                                modifier = Modifier.weight(1f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 Button(
-                    onClick = onLoginSuccess,
+                    onClick = {
+                        viewModel.login(email, password, isOperator)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    enabled = !authState.isLoading
                 ) {
-                    Text("Login", color = RoyalBlue, fontWeight = FontWeight.Bold)
+                    if (authState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = RoyalBlue,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Login", color = RoyalBlue, fontWeight = FontWeight.Bold)
+                    }
                 }
 
-                TextButton(onClick = { /* TODO: Lógica esqueci minha senha */ }) {
+                TextButton(
+                    onClick = { /* TODO: Lógica esqueci minha senha */ },
+                    enabled = !authState.isLoading
+                ) {
                     Text("Esqueci minha senha", color = Color.White.copy(alpha = 0.7f))
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Botão de Cadastro
+                OutlinedButton(
+                    onClick = onNavigateToRegister,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.White
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White),
+                    enabled = !authState.isLoading
+                ) {
+                    Text("Criar Nova Conta", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -174,6 +261,9 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 @Composable
 fun LoginScreenPreview() {
     WtcCrmTheme {
-        LoginScreen(onLoginSuccess = {})
+        LoginScreen(
+            onLoginSuccess = {},
+            onNavigateToRegister = {}
+        )
     }
 }

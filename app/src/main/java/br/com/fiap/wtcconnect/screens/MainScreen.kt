@@ -26,6 +26,8 @@ import br.com.fiap.wtcconnect.screens.profile.NotificationsScreen
 import br.com.fiap.wtcconnect.screens.profile.ProfileScreen
 import br.com.fiap.wtcconnect.ui.theme.AccentGreen
 import br.com.fiap.wtcconnect.ui.theme.AccentOrange
+import br.com.fiap.wtcconnect.viewmodel.AuthViewModel
+import br.com.fiap.wtcconnect.viewmodel.UserType
 
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Chat : BottomNavItem("chat", Icons.Default.Chat, "Chat")
@@ -38,10 +40,10 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
-    // TODO: Obter o tipo de usuário (operador/cliente) do ViewModel/Login
-    val isOperator = true
+    val authState by authViewModel.authState.collectAsState()
+    val isOperator = authState.userType == UserType.OPERATOR
 
     val items = mutableListOf(
         BottomNavItem.Chat,
@@ -59,7 +61,7 @@ fun MainScreen() {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
-            NavigationGraph(navController = navController)
+            NavigationGraph(navController = navController, authViewModel = authViewModel)
         }
     }
 }
@@ -100,13 +102,14 @@ fun BottomNavigationBar(navController: NavController, items: List<BottomNavItem>
 
 
 @Composable
-fun NavigationGraph(navController: androidx.navigation.NavHostController) {
+fun NavigationGraph(navController: androidx.navigation.NavHostController, authViewModel: AuthViewModel) {
     NavHost(navController, startDestination = BottomNavItem.Chat.route) {
         composable(BottomNavItem.Chat.route) { ChatScreen() }
         composable(BottomNavItem.Campaigns.route) { CampaignsScreen() }
         composable(BottomNavItem.Clients.route) { ClientsScreen() }
         composable(BottomNavItem.Profile.route) {
             ProfileScreen(
+                authViewModel = authViewModel,
                 onNavigateToChangePassword = {
                     navController.navigate("change_password")
                 },
