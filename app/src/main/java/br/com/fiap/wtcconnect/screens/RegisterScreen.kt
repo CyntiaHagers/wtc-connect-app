@@ -1,4 +1,4 @@
-package br.com.fiap.wtcconnect.screens.login
+package br.com.fiap.wtcconnect.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween

@@ -37,7 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 fun LoginScreen(
     onLoginSuccess: (UserType) -> Unit,
-    onNavigateToRegister: () -> Unit,
+    onNavigateToRegister: () -> Unit = {},
     viewModel: AuthViewModel = viewModel()
 ) {
     val authState by viewModel.authState.collectAsState()

@@ -24,6 +24,7 @@ import br.com.fiap.wtcconnect.screens.profile.ChangePasswordScreen
 import br.com.fiap.wtcconnect.screens.profile.HelpScreen
 import br.com.fiap.wtcconnect.screens.profile.NotificationsScreen
 import br.com.fiap.wtcconnect.screens.profile.ProfileScreen
+import br.com.fiap.wtcconnect.screens.groups.GroupsScreen
 import br.com.fiap.wtcconnect.ui.theme.AccentGreen
 import br.com.fiap.wtcconnect.ui.theme.AccentOrange
 import br.com.fiap.wtcconnect.viewmodel.AuthViewModel
@@ -33,6 +34,7 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
     object Chat : BottomNavItem("chat", Icons.Default.Chat, "Chat")
     object Campaigns : BottomNavItem("campaigns", Icons.Default.Campaign, "Campanhas")
     object Clients : BottomNavItem("clients", Icons.Default.People, "Clientes")
+    object Groups : BottomNavItem("groups", Icons.Default.People, "Grupos")
     object Profile : BottomNavItem("profile", Icons.Default.Settings, "Perfil")
 }
 
@@ -51,6 +53,8 @@ fun MainScreen(authViewModel: AuthViewModel) {
     ).apply {
         if (isOperator) {
             add(BottomNavItem.Clients)
+        } else {
+            add(BottomNavItem.Groups)
         }
         add(BottomNavItem.Profile)
     }
@@ -107,6 +111,7 @@ fun NavigationGraph(navController: androidx.navigation.NavHostController, authVi
         composable(BottomNavItem.Chat.route) { ChatScreen() }
         composable(BottomNavItem.Campaigns.route) { CampaignsScreen() }
         composable(BottomNavItem.Clients.route) { ClientsScreen() }
+        composable(BottomNavItem.Groups.route) { GroupsScreen() }
         composable(BottomNavItem.Profile.route) {
             ProfileScreen(
                 authViewModel = authViewModel,
