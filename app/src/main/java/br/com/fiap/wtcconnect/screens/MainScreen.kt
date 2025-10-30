@@ -1,8 +1,9 @@
+@file:Suppress("DEPRECATION")
+
 package br.com.fiap.wtcconnect.screens.main
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Chat
@@ -18,7 +19,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import br.com.fiap.wtcconnect.screens.campaigns.CampaignsScreen
-import br.com.fiap.wtcconnect.screens.chat.ChatScreen
+import br.com.fiap.wtcconnect.screens.ChatScreen
+import br.com.fiap.wtcconnect.screens.ConversationListScreen
 import br.com.fiap.wtcconnect.screens.clients.ClientsScreen
 import br.com.fiap.wtcconnect.screens.profile.ChangePasswordScreen
 import br.com.fiap.wtcconnect.screens.profile.HelpScreen
@@ -107,11 +109,36 @@ fun BottomNavigationBar(navController: NavController, items: List<BottomNavItem>
 
 @Composable
 fun NavigationGraph(navController: androidx.navigation.NavHostController, authViewModel: AuthViewModel) {
+    // Cria um repositório compartilhado entre a lista de conversas e as telas de chat
+    // Passa informações do usuário autenticado (id/email) para que o repositório fake saiba o contexto
+    val authState by authViewModel.authState.collectAsState()
+    val sharedRepo = remember(authState.userId, authState.userEmail) {
+        br.com.fiap.wtcconnect.data.FakeChatRepository(currentUserId = authState.userId ?: "me", currentUserEmail = authState.userEmail)
+    }
     NavHost(navController, startDestination = BottomNavItem.Chat.route) {
-        composable(BottomNavItem.Chat.route) { ChatScreen() }
+        // Rota 'chat' agora apresenta a lista de conversas (ConversationListScreen)
+        composable(BottomNavItem.Chat.route) {
+            // Exibe a lista de conversas usando o repositório compartilhado
+            ConversationListScreen(navController = navController, repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+        }
+        // Rota com argumentos para abrir o chat 1:1 com conversationId e peerUserId
+        composable("chat/{conversationId}/{peerUserId}") { backStackEntry ->
+            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
+            val peerUserId = backStackEntry.arguments?.getString("peerUserId") ?: ""
+            // Usa o mesmo repositório compartilhado para que mensagens/estado sejam visíveis entre telas
+            ChatScreen(navController = navController, conversationId = conversationId, peerUserId = peerUserId, repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+        }
+        // Rota para chat de grupo (broadcast)
+        composable("group_chat/{groupId}") { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+            ChatScreen(navController = navController, conversationId = "group_$groupId", peerUserId = "group:$groupId", repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+        }
         composable(BottomNavItem.Campaigns.route) { CampaignsScreen(authViewModel = authViewModel) }
         composable(BottomNavItem.Clients.route) { ClientsScreen() }
-        composable(BottomNavItem.Groups.route) { GroupsScreen() }
+        composable(BottomNavItem.Groups.route) {
+            // Chamada direta da tela de Grupos (tratamento de erros deve ser interno à tela)
+            GroupsScreen(navController = navController, repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+        }
         composable(BottomNavItem.Profile.route) {
             ProfileScreen(
                 authViewModel = authViewModel,
@@ -153,4 +180,3 @@ fun NavigationGraph(navController: androidx.navigation.NavHostController, authVi
         }
     }
 }
-

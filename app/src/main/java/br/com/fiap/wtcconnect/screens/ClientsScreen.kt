@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package br.com.fiap.wtcconnect.screens.clients
 
 import androidx.compose.foundation.background
@@ -180,7 +182,7 @@ fun ClientsScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     val id = showNoteDialogFor
-                    if (!noteText.isNullOrBlank() && id != null) {
+                    if (noteText.isNotBlank() && id != null) {
                         val list = notesByClient.getOrPut(id) { mutableListOf() }
                         list.add(noteText.trim())
                     }

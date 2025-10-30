@@ -1,350 +1,266 @@
-package br.com.fiap.wtcconnect.screens.chat
+package br.com.fiap.wtcconnect.screens
 
-import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.lifecycle.viewmodel.compose.viewModel
-import br.com.fiap.wtcconnect.viewmodel.ChatViewModel
-import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import br.com.fiap.wtcconnect.data.ChatRepository
+import br.com.fiap.wtcconnect.data.FakeChatRepository
+import br.com.fiap.wtcconnect.presentation.ChatViewModel
+import br.com.fiap.wtcconnect.presentation.ChatViewModelFactory
+import br.com.fiap.wtcconnect.data.Message
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import br.com.fiap.wtcconnect.ui.theme.RoyalBlue
-import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
-import br.com.fiap.wtcconnect.ui.theme.White
-import br.com.fiap.wtcconnect.notifications.InAppEventBus
-import br.com.fiap.wtcconnect.notifications.InAppEvent
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import androidx.compose.ui.window.Dialog
-import android.widget.Toast
 
-// Mock Data
-data class Message(
-    val id: Int,
-    val text: String,
-    val isFromMe: Boolean,
-    val author: String,
-    val interactiveData: InteractiveMessage? = null
-)
-
-data class InteractiveMessage(
-    val title: String,
-    val body: String,
-    val actions: List<Pair<String, String>>
-)
-
+/**
+ * ChatScreen composable que exibe o histórico de mensagens para a conversationId fornecida.
+ * Recebe NavController para permitir voltar à lista com popUpTo correto.
+ * Usa ChatViewModel para carregar mensagens via Flow exposto pelo repositório.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(chatId: String = "default_chat") {
-    val factory = ChatViewModel.Factory(chatId)
-    val vm: ChatViewModel = viewModel(factory = factory)
-    val messages by vm.messages.collectAsState()
-    var messageText by remember { mutableStateOf("") }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-    var showCreateInteractive by remember { mutableStateOf(false) }
+fun ChatScreen(navController: NavController, conversationId: String, peerUserId: String, repository: ChatRepository? = null, currentUserId: String? = null, currentUserType: br.com.fiap.wtcconnect.viewmodel.UserType = br.com.fiap.wtcconnect.viewmodel.UserType.CLIENT) {
+    val repo = repository ?: FakeChatRepository()
+    // Cria ViewModel com factory passando conversationId e currentUserId
+    val effectiveUserId = currentUserId ?: "me"
+    val vm: ChatViewModel = viewModel(factory = ChatViewModelFactory(repo, conversationId, effectiveUserId))
+    val state by vm.uiState.collectAsState()
 
-    // Observe in-app events (from FCM service) to show popup notifications
-    val listState = rememberLazyListState()
-    LaunchedEffect(Unit) {
-        InAppEventBus.events.collectLatest { event ->
-            when (event) {
-                is InAppEvent.NewMessage -> {
-                    coroutineScope.launch {
-                        val result = snackbarHostState.showSnackbar(
-                            message = event.title ?: "Nova mensagem",
-                            actionLabel = "Abrir"
-                        )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            // scroll to last message
-                            if (messages.isNotEmpty()) {
-                                listState.animateScrollToItem(messages.size - 1)
-                            }
-                        }
-                    }
+    // Tenta obter nome do peer a partir das conversas disponíveis
+    val conversations by repo.getConversations().collectAsState(initial = emptyList())
+    val peerName = conversations.find { it.id == conversationId }?.peerUser?.name ?: "Contato"
+
+    // Authorization checks
+    var authorized by remember { mutableStateOf(true) }
+    var authErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(conversationId, currentUserId, currentUserType) {
+        // Group chat: peerUserId is in format "group:{groupId}" or conversationId startsWith("group_")
+        if (conversationId.startsWith("group_") || peerUserId.startsWith("group:")) {
+            val groupId = peerUserId.removePrefix("group:").ifEmpty { conversationId.removePrefix("group_") }
+            // check membership
+            val userGroup = currentUserId?.let { uid -> repo.getUserGroupId(uid) }
+            var gid: String? = null
+            if (userGroup != null) {
+                userGroup.collect { gid = it }
+            }
+            if (gid != groupId && currentUserType != br.com.fiap.wtcconnect.viewmodel.UserType.OPERATOR) {
+                authorized = false
+                authErrorMessage = "Você não tem permissão para ver o chat deste grupo"
+            }
+        } else {
+            // 1:1 chat: ensure both users are in same group if current is CLIENT
+            if (currentUserType == br.com.fiap.wtcconnect.viewmodel.UserType.CLIENT && currentUserId != null) {
+                val myGroup = repo.getUserGroupId(currentUserId)
+                var gid: String? = null
+                myGroup.collect { gid = it }
+                val peerGroupFlow = repo.getUserGroupId(peerUserId)
+                var peerGid: String? = null
+                peerGroupFlow.collect { peerGid = it }
+                if (gid == null || peerGid == null || gid != peerGid) {
+                    authorized = false
+                    authErrorMessage = "Você só pode conversar com membros do seu grupo"
                 }
             }
         }
     }
 
+    if (!authorized) {
+        // Exibe mensagem de erro clara
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = authErrorMessage ?: "Acesso negado", style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = { navController.navigateUp() }) { Text("Voltar") }
+            }
+        }
+        return
+    }
+
+    val listState = rememberLazyListState()
+
+    // Rolar para o fim no carregamento inicial e sempre que mensagens mudarem
+    LaunchedEffect(state.messages.size) {
+        if (state.messages.isNotEmpty()) {
+            // scroll até a última mensagem
+            listState.scrollToItem(state.messages.size - 1)
+        }
+    }
+
+    // Rolar para a última mensagem assim que o loading terminar (carregamento inicial)
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading && state.messages.isNotEmpty()) {
+            listState.scrollToItem(state.messages.size - 1)
+        }
+    }
+
+    var input by remember { mutableStateOf("") }
+
+    // Cache simples de usuários para exibir nome do remetente
+    val userCache = remember { mutableStateMapOf<String, br.com.fiap.wtcconnect.data.User?>() }
+
+    // Referencia peerUserId para evitar warning de "parameter never used" (no futuro será usado para carregar perfil)
+    LaunchedEffect(peerUserId) { /* noop: peerUserId observado para futuras mudanças */ }
+
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Atendimento WTC") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
-                )
-            )
-        },
-        bottomBar = {
-            MessageInput(
-                value = messageText,
-                onValueChange = { messageText = it },
-                onSend = {
-                    val current = FirebaseAuth.getInstance().currentUser
-                    if (messageText.isNotBlank() && current != null) {
-                        vm.sendMessage(messageText.trim(), current.uid, current.displayName ?: current.email)
-                        messageText = ""
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Avatar placeholder
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.Gray),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = peerName.firstOrNull()?.toString() ?: "C", color = Color.White)
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(text = peerName, fontWeight = FontWeight.Bold)
                     }
                 },
-                onCreateInteractive = { showCreateInteractive = true }
+                navigationIcon = {
+                    IconButton(onClick = {
+                         // Volta para a lista garantindo popUpTo correto
+                         navController.navigate("chat") {
+                             popUpTo("chat") { inclusive = false }
+                         }
+                     }) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
+                    }
+                }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            state = listState,
-            reverseLayout = false
-        ) {
-            items(messages) { msg ->
-                // Map ChatMessage to UI Message model for compatibility
-                val uiMessage = Message(
-                    id = msg.id.hashCode(),
-                    text = msg.text,
-                    isFromMe = msg.senderId == FirebaseAuth.getInstance().currentUser?.uid,
-                    author = msg.senderName ?: "",
-                    interactiveData = null
-                )
-                // If message has interactive payload, render special UI
-                if (msg.interactive != null) {
-                    val actions = (msg.interactive["actions"] as? List<*>)
-                        ?.mapNotNull { item ->
-                            val map = item as? Map<*, *>
-                            val entry = map?.entries?.firstOrNull()
-                            entry?.let { Pair(it.key.toString(), it.value.toString()) }
-                        } ?: emptyList()
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)) {
 
-                    InteractiveMessageContent(
-                        InteractiveMessage(
-                            title = (msg.interactive["title"] as? String) ?: "",
-                            body = (msg.interactive["body"] as? String) ?: "",
-                            actions = actions
-                        )
-                    )
-                } else {
-                    MessageBubble(message = uiMessage)
+            when {
+                state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-
-    if (showCreateInteractive) {
-        CreateInteractiveDialog(
-            onDismiss = { showCreateInteractive = false },
-            onCreate = { title, body, actions ->
-                val current = FirebaseAuth.getInstance().currentUser
-                if (current != null) {
-                    // Build interactive map
-                    val interactiveMap = hashMapOf<String, Any>(
-                        "title" to title,
-                        "body" to body,
-                        "actions" to actions.map { mapOf(it.first to it.second) }
-                    )
-                    vm.sendInteractiveMessage(body, current.uid, current.displayName ?: current.email, interactiveMap)
+                state.error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "Erro: ${state.error}")
                 }
-                showCreateInteractive = false
-            }
-        )
-    }
-}
+                else -> {
+                    // Lista de mensagens
+                    LazyColumn(
+                         modifier = Modifier
+                             .weight(1f)
+                             .fillMaxWidth()
+                             .padding(8.dp),
+                         state = listState
+                     ) {
+                         items(state.messages) { message ->
+                             // isMe: identifica se a mensagem foi enviada pelo usuário local (fake id "me")
+                             val isMe = message.senderId == (currentUserId ?: "me")
+                             val senderName = if (isMe) null else userCache[message.senderId]
+                                 ?: run {
+                                     // inicia coleta em background para popular cache
+                                     LaunchedEffect(message.senderId) {
+                                         repo.getUserById(message.senderId).collect { u ->
+                                             userCache[message.senderId] = u
+                                         }
+                                     }
+                                     userCache[message.senderId]
+                                 }
 
-@Composable
-fun MessageBubble(message: Message) {
-    var offsetX by remember { mutableStateOf(0f) }
+                             MessageRow(message = message, isMe = isMe, senderName = senderName?.name)
+                         }
+                     }
 
-    val alignment = if (message.isFromMe) Alignment.CenterEnd else Alignment.CenterStart
-    val backgroundColor = if (message.isFromMe) RoyalBlue else White
-    val textColor = if (message.isFromMe) White else Color.Black
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = if (message.isFromMe) 64.dp else 0.dp,
-                end = if (message.isFromMe) 0.dp else 64.dp
-            ),
-        contentAlignment = alignment
-    ) {
-        Column(
-            modifier = Modifier
-                .offset(x = (offsetX / 2).dp) // Efeito visual do swipe
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragEnd = {
-                            // TODO: Implementar ação com base no swipe
-                            if (offsetX > 150) println("Ação: Marcar como importante")
-                            if (offsetX < -150) println("Ação: Criar tarefa")
-                            offsetX = 0f // Reset
-                        }
-                    ) { change, dragAmount ->
-                        change.consume()
-                        offsetX += dragAmount.x
-                    }
-                }
-                .clip(RoundedCornerShape(12.dp))
-                .background(backgroundColor)
-                .padding(12.dp)
-        ) {
-            if (message.interactiveData != null) {
-                InteractiveMessageContent(message.interactiveData)
-            } else {
-                Text(text = message.text, color = textColor)
-            }
-        }
-    }
-}
-
-@Composable
-fun InteractiveMessageContent(interactive: InteractiveMessage) {
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(interactive.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(interactive.body)
-            Spacer(modifier = Modifier.height(16.dp))
-            Row {
-                val context = LocalContext.current
-                val currentUser = FirebaseAuth.getInstance().currentUser
-                interactive.actions.forEach { (title, payload) ->
-                    Button(
-                        onClick = {
-                            // If payload looks like a URL open browser
-                            if (payload.startsWith("http://") || payload.startsWith("https://")) {
-                                val intent = Intent(Intent.ACTION_VIEW)
-                                intent.data = android.net.Uri.parse(payload)
-                                context.startActivity(intent)
-                            } else {
-                                // Otherwise, treat as command/payload: fallback simple behavior is showing a toast
-                                Toast.makeText(context, "Ação: $payload", Toast.LENGTH_SHORT).show()
-                                // TODO: integrate a callback to ViewModel to perform richer action (e.g., send reply or deep link)
+                    // Entrada de texto + botão enviar
+                    Row(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = input,
+                            onValueChange = { input = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Digite uma mensagem")
                             }
-                        },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(title)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MessageInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onSend: () -> Unit,
-    onCreateInteractive: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        TextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Digite uma mensagem ou /comando") },
-            shape = RoundedCornerShape(24.dp),
-            colors = TextFieldDefaults.colors(
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            )
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        IconButton(onClick = onCreateInteractive) {
-            Icon(Icons.Default.Add, contentDescription = "Criar Interativo")
-        }
-        Spacer(modifier = Modifier.width(4.dp))
-        IconButton(onClick = onSend) {
-            Icon(Icons.Default.Send, contentDescription = "Enviar")
-        }
-    }
-}
-
-@Composable
-fun CreateInteractiveDialog(
-    onDismiss: () -> Unit,
-    onCreate: (title: String, body: String, actions: List<Pair<String, String>>) -> Unit
-) {
-    var title by remember { mutableStateOf("") }
-    var body by remember { mutableStateOf("") }
-    var actionTitle by remember { mutableStateOf("") }
-    var actionPayload by remember { mutableStateOf("") }
-    val actions = remember { mutableStateListOf<Pair<String, String>>() }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Criar Mensagem Interativa", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Título") })
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text("Corpo") })
-                Spacer(modifier = Modifier.height(8.dp))
-                Row {
-                    OutlinedTextField(value = actionTitle, onValueChange = { actionTitle = it }, label = { Text("Ação título") }, modifier = Modifier.weight(1f))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedTextField(value = actionPayload, onValueChange = { actionPayload = it }, label = { Text("Ação payload") }, modifier = Modifier.weight(1f))
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row {
-                    Button(onClick = {
-                        if (actionTitle.isNotBlank() && actionPayload.isNotBlank()) {
-                            actions.add(actionTitle to actionPayload)
-                            actionTitle = ""
-                            actionPayload = ""
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = {
+                            val content = input.trim()
+                            if (content.isNotEmpty()) {
+                                vm.sendMessage(content)
+                                input = ""
+                                // A rolagem será tratada pelo LaunchedEffect que observa state.messages.size
+                            }
+                        }) {
+                            Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = "Enviar")
                         }
-                    }) { Text("Adicionar Ação") }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Ações: ${actions.size}")
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancelar") }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { onCreate(title, body, actions.toList()) }) { Text("Enviar") }
+                    }
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun ChatScreenPreview() {
-    WtcCrmTheme {
-        ChatScreen()
+fun MessageRow(message: Message, isMe: Boolean, senderName: String? = null) {
+    // Layout de mensagem com avatar para mensagens recebidas
+    val bg = if (isMe) RoyalBlue else Color(0xFFEFEFEF)
+    if (isMe) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Column(modifier = Modifier
+                .widthIn(max = 280.dp)
+                .padding(4.dp)
+                .background(bg, shape = RoundedCornerShape(8.dp))
+                .padding(8.dp)) {
+                Text(text = message.content, color = Color.White)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = formatTime(message.timestamp), fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.align(Alignment.End))
+            }
+        }
+    } else {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start, verticalAlignment = Alignment.Top) {
+            // Avatar com iniciais
+            val initials = senderName?.firstOrNull()?.toString() ?: message.senderId.firstOrNull()?.toString() ?: "U"
+            Box(modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(RoyalBlue), contentAlignment = Alignment.Center) {
+                Text(initials, color = Color.White, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column(modifier = Modifier
+                .widthIn(max = 280.dp)
+                .padding(4.dp)
+                .background(bg, shape = RoundedCornerShape(8.dp))
+                .padding(8.dp)) {
+                if (!senderName.isNullOrEmpty()) {
+                    Text(text = senderName, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Black)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                Text(text = message.content, color = Color.Black)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = formatTime(message.timestamp), fontSize = 10.sp, color = Color.Gray)
+            }
+        }
     }
 }
