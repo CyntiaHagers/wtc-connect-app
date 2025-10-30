@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.fiap.wtcconnect.R // Supondo que as imagens estão em res/drawable
 import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
+import br.com.fiap.wtcconnect.viewmodel.AuthViewModel
+import br.com.fiap.wtcconnect.viewmodel.UserType
 
 
 data class Campaign(
@@ -46,7 +49,17 @@ val mockCampaigns = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CampaignsScreen() {
+fun CampaignsScreen(authViewModel: AuthViewModel) {
+    val authState by authViewModel.authState.collectAsState()
+    val isOperator = authState.userType == UserType.OPERATOR
+
+    var showNewCampaignForm by remember { mutableStateOf(false) }
+
+    // Campos do formulário simulado
+    var newTitle by rememberSaveable { mutableStateOf("") }
+    var newDescription by rememberSaveable { mutableStateOf("") }
+    var newDate by rememberSaveable { mutableStateOf("") }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -58,16 +71,78 @@ fun CampaignsScreen() {
             )
         }
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(paddingValues)
         ) {
-            items(mockCampaigns) { campaign ->
-                CampaignCardExpandable(campaign)
 
+            if (isOperator) {
+                Button(
+                    onClick = { showNewCampaignForm = !showNewCampaignForm },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(if (showNewCampaignForm) "Fechar Formulário" else "Nova Publicação")
+                }
+            }
+
+            if (showNewCampaignForm) {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        OutlinedTextField(
+                            value = newTitle,
+                            onValueChange = { newTitle = it },
+                            label = { Text("Título da campanha") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = newDescription,
+                            onValueChange = { newDescription = it },
+                            label = { Text("Descrição (máx. 15 linhas)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 15
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = newDate,
+                            onValueChange = { newDate = it },
+                            label = { Text("Data") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                // Simulação: mostra snackbar ou toast pode ser implementado aqui
+                                newTitle = ""
+                                newDescription = ""
+                                newDate = ""
+                                showNewCampaignForm = false
+                            },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Publicar")
+                        }
+                    }
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(mockCampaigns) { campaign ->
+                    CampaignCardExpandable(campaign)
+                }
             }
         }
     }
@@ -75,8 +150,8 @@ fun CampaignsScreen() {
 
 @Composable
 fun CampaignCardExpandable(campaign: Campaign) {
-    var expanded by rememberSaveable  { mutableStateOf(false) }
-    var isConfirmed by rememberSaveable  { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var isConfirmed by rememberSaveable { mutableStateOf(false) }
     var showMessage by remember { mutableStateOf(false) }
 
     Card(
@@ -115,7 +190,6 @@ fun CampaignCardExpandable(campaign: Campaign) {
                         onClick = {
                             isConfirmed = true
                             showMessage = true
-
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
@@ -127,7 +201,6 @@ fun CampaignCardExpandable(campaign: Campaign) {
                     }
                 }
 
-                // Detalhes do evento
                 if (expanded) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -154,7 +227,6 @@ fun CampaignCardExpandable(campaign: Campaign) {
                     )
                 }
 
-                // Mensagem de confirmação temporária
                 if (showMessage) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
@@ -182,6 +254,6 @@ fun CampaignCardExpandable(campaign: Campaign) {
 @Composable
 fun CampaignsScreenPreview() {
     WtcCrmTheme {
-        CampaignsScreen()
+        CampaignsScreen(authViewModel = AuthViewModel())
     }
 }

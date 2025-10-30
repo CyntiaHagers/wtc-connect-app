@@ -109,7 +109,7 @@ fun BottomNavigationBar(navController: NavController, items: List<BottomNavItem>
 fun NavigationGraph(navController: androidx.navigation.NavHostController, authViewModel: AuthViewModel) {
     NavHost(navController, startDestination = BottomNavItem.Chat.route) {
         composable(BottomNavItem.Chat.route) { ChatScreen() }
-        composable(BottomNavItem.Campaigns.route) { CampaignsScreen() }
+        composable(BottomNavItem.Campaigns.route) { CampaignsScreen(authViewModel = authViewModel) }
         composable(BottomNavItem.Clients.route) { ClientsScreen() }
         composable(BottomNavItem.Groups.route) { GroupsScreen() }
         composable(BottomNavItem.Profile.route) {
