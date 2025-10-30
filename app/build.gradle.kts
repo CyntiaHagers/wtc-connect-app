@@ -1,12 +1,10 @@
-
-
 // C:/Users/raulc/OneDrive/Documentos/GitHub/wtc-connect-app/app/build.gradle.kts
 
 plugins {
-    alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     // alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.gms)
+    id("com.android.application")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -75,12 +73,17 @@ dependencies {
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
-    // Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
-    // implementation("com.google.firebase:firebase-auth-ktx") // For these, you would add them to libs.versions.toml first
-    // implementation("com.google.firebase:firebase-firestore-ktx")
-    // implementation("com.google.firebase:firebase-messaging-ktx")
+    // Firebase - BOM gerencia as versões automaticamente
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
     // Testes
     testImplementation(libs.junit)

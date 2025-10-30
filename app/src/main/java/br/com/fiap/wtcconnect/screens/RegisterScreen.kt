@@ -1,59 +1,57 @@
-package br.com.fiap.wtcconnect.screens.login
+package br.com.fiap.wtcconnect.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import br.com.fiap.wtcconnect.R // Supondo que o logo está em res/drawable
 import br.com.fiap.wtcconnect.ui.theme.RoyalBlue
 import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
 import br.com.fiap.wtcconnect.viewmodel.AuthViewModel
 import br.com.fiap.wtcconnect.viewmodel.UserType
-import androidx.compose.ui.platform.LocalContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(
-    onLoginSuccess: (UserType) -> Unit,
-    onNavigateToRegister: () -> Unit = {},
+fun RegisterScreen(
+    onRegisterSuccess: (UserType) -> Unit,
+    onNavigateBack: () -> Unit,
     viewModel: AuthViewModel = viewModel()
 ) {
     val authState by viewModel.authState.collectAsState()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var isOperator by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
     LaunchedEffect(authState.isAuthenticated) {
         if (authState.isAuthenticated) {
-            // register pending fcm token if present
-            authState.userId?.let { uid ->
-                br.com.fiap.wtcconnect.notifications.FcmTokenManager.registerPendingTokenIfAny(context, uid)
-            }
-            onLoginSuccess(authState.userType)
+            onRegisterSuccess(authState.userType)
         }
     }
 
@@ -70,6 +68,20 @@ fun LoginScreen(
                 )
             )
     ) {
+        // Back button
+        IconButton(
+            onClick = onNavigateBack,
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Voltar",
+                tint = Color.White
+            )
+        }
+
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(animationSpec = tween(durationMillis = 1500)),
@@ -78,23 +90,23 @@ fun LoginScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Substitua com o seu logo
-                // Image(
-                //     painter = painterResource(id = R.drawable.wtc_logo),
-                //     contentDescription = "WTC Logo",
-                //     modifier = Modifier.size(120.dp),
-                //     contentScale = ContentScale.Fit
-                // )
-
                 Text(
-                    text = "WTC Connect",
+                    text = "Criar Conta",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Text(
+                    text = "Cadastre-se no WTC Connect",
+                    fontSize = 16.sp,
+                    color = Color.White.copy(alpha = 0.8f),
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
 
@@ -107,7 +119,7 @@ fun LoginScreen(
                         OutlinedTextField(
                             value = email,
                             onValueChange = { email = it },
-                            label = { Text("E-mail ou Telefone") },
+                            label = { Text("E-mail") },
                             modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             colors = TextFieldDefaults.colors(
@@ -120,7 +132,8 @@ fun LoginScreen(
                                 focusedIndicatorColor = Color.White,
                                 unfocusedIndicatorColor = Color.LightGray,
                                 cursorColor = Color.White
-                            )
+                            ),
+                            singleLine = true
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -128,10 +141,19 @@ fun LoginScreen(
                         OutlinedTextField(
                             value = password,
                             onValueChange = { password = it },
-                            label = { Text("Senha") },
+                            label = { Text("Senha (mínimo 6 caracteres)") },
                             modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = PasswordVisualTransformation(),
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (passwordVisible) "Ocultar senha" else "Mostrar senha",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
                             colors = TextFieldDefaults.colors(
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
@@ -142,7 +164,40 @@ fun LoginScreen(
                                 focusedIndicatorColor = Color.White,
                                 unfocusedIndicatorColor = Color.LightGray,
                                 cursorColor = Color.White
-                            )
+                            ),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            label = { Text("Confirmar Senha") },
+                            modifier = Modifier.fillMaxWidth(),
+                            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = {
+                                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (confirmPasswordVisible) "Ocultar senha" else "Mostrar senha",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            colors = TextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedLabelColor = Color.White,
+                                unfocusedLabelColor = Color.LightGray,
+                                focusedIndicatorColor = Color.White,
+                                unfocusedIndicatorColor = Color.LightGray,
+                                cursorColor = Color.White
+                            ),
+                            singleLine = true
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -163,15 +218,15 @@ fun LoginScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isOperator) "Entrar como Operador" else "Entrar como Cliente",
-                                color = Color.White
+                                text = if (isOperator) "Cadastrar como Operador" else "Cadastrar como Cliente",
+                                color = Color.White,
+                                fontSize = 14.sp
                             )
                         }
                     }
                 }
 
-
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Error Message Display
                 if (authState.errorMessage != null) {
@@ -208,7 +263,7 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        viewModel.login(email, password, isOperator)
+                        viewModel.register(email, password, confirmPassword, isOperator)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -224,33 +279,17 @@ fun LoginScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Login", color = RoyalBlue, fontWeight = FontWeight.Bold)
+                        Text("Criar Conta", color = RoyalBlue, fontWeight = FontWeight.Bold)
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
                 TextButton(
-                    onClick = { /* TODO: Lógica esqueci minha senha */ },
+                    onClick = onNavigateBack,
                     enabled = !authState.isLoading
                 ) {
-                    Text("Esqueci minha senha", color = Color.White.copy(alpha = 0.7f))
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Botão de Cadastro
-                OutlinedButton(
-                    onClick = onNavigateToRegister,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White),
-                    enabled = !authState.isLoading
-                ) {
-                    Text("Criar Nova Conta", fontWeight = FontWeight.Bold)
+                    Text("Já tem uma conta? Faça login", color = Color.White.copy(alpha = 0.9f))
                 }
             }
         }
@@ -259,11 +298,12 @@ fun LoginScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun LoginScreenPreview() {
+fun RegisterScreenPreview() {
     WtcCrmTheme {
-        LoginScreen(
-            onLoginSuccess = {},
-            onNavigateToRegister = {}
+        RegisterScreen(
+            onRegisterSuccess = {},
+            onNavigateBack = {}
         )
     }
 }
+
