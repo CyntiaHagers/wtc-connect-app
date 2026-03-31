@@ -82,13 +82,6 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Substitua com o seu logo
-                // Image(
-                //     painter = painterResource(id = R.drawable.wtc_logo),
-                //     contentDescription = "WTC Logo",
-                //     modifier = Modifier.size(120.dp),
-                //     contentScale = ContentScale.Fit
-                // )
 
                 Text(
                     text = "WTC Connect",
