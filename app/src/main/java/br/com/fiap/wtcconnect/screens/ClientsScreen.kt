@@ -22,14 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.fiap.wtcconnect.ui.theme.AccentGreen
 import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
-
-data class Client(
-    val id: Int,
-    val name: String,
-    val status: String,
-    val tags: List<String>,
-    val score: Int
-)
+import br.com.fiap.wtcconnect.data.model.Client
 
 val mockClients = listOf(
     Client(1, "Empresa Alpha", "Ativo", listOf("VIP", "Lead Quente"), 95),
@@ -40,7 +33,9 @@ val mockClients = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClientsScreen() {
+fun ClientsScreen(
+    onOpenChat: (Client) -> Unit // 🔥 ADICIONADO
+) {
     var searchQuery by remember { mutableStateOf("") }
 
     val clients = remember {
@@ -93,6 +88,8 @@ fun ClientsScreen() {
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
+
+            // 🔎 BUSCA + FILTROS (sem alteração)
             Column(modifier = Modifier.padding(16.dp)) {
                 TextField(
                     value = searchQuery,
@@ -109,6 +106,7 @@ fun ClientsScreen() {
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Status", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -131,6 +129,7 @@ fun ClientsScreen() {
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Tags", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -152,11 +151,8 @@ fun ClientsScreen() {
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Score mínimo: ${minScore.toInt()}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.Gray
-                )
+                Text("Score mínimo: ${minScore.toInt()}", color = Color.Gray)
+
                 Slider(
                     value = minScore,
                     onValueChange = { minScore = it },
@@ -164,19 +160,25 @@ fun ClientsScreen() {
                 )
             }
 
+            // 📋 LISTA DE CLIENTES
             LazyColumn(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(filtered, key = { it.id }) { client ->
                     val noteCount = notesByClient[client.id]?.size ?: 0
+
                     ClientListItem(
                         client = client,
                         noteCount = noteCount,
                         onAddNote = {
                             showNoteDialogFor = client.id
                         },
-                        onNewMessage = { /* TODO integrar com chat/rota */ }
+
+                        // 🔥 AQUI ESTÁ A CORREÇÃO DO CHAT
+                        onNewMessage = {
+                            onOpenChat(client)
+                        }
                     )
                 }
             }
@@ -368,6 +370,8 @@ fun Chip(label: String) {
 @Composable
 fun ClientsScreenPreview() {
     WtcCrmTheme {
-        ClientsScreen()
+        ClientsScreen(
+            onOpenChat = {}
+        )
     }
 }

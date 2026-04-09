@@ -22,25 +22,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.fiap.wtcconnect.R
+import br.com.fiap.wtcconnect.data.model.Campaign
 import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
 
-data class Campaign(
-    val id: Int,
-    val title: String,
-    val description: String,
-    val date: String,
-    val imageUrl: Int?
-)
-
 val mockCampaigns = listOf(
-    Campaign(1, "Feirão WTC", "Até 40% de desconto para associados", "15-20 OUT", R.drawable.desconto),
-    Campaign(2, "WTC Summit 2024", "O maior evento de networking do ano.", "25 NOV", R.drawable.networking),
-    Campaign(3, "Happy Hour de Negócios", "Conecte-se com líderes do mercado.", "Toda Sexta", R.drawable.negocios)
+    Campaign(1, "Feirão WTC", "Até 40% de desconto para associados", "15-20 OUT", "Todos", R.drawable.desconto),
+    Campaign(2, "WTC Summit 2024", "O maior evento de networking do ano.", "25 NOV", "VIP", R.drawable.networking),
+    Campaign(3, "Happy Hour de Negócios", "Conecte-se com líderes do mercado.", "Toda Sexta", "Lead Quente", R.drawable.negocios)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampaignsScreen() {
+
     val campaigns = remember {
         mutableStateListOf<Campaign>().apply {
             addAll(mockCampaigns)
@@ -48,9 +42,22 @@ fun CampaignsScreen() {
     }
 
     var showNewCampaignDialog by remember { mutableStateOf(false) }
+    var editingCampaign by remember { mutableStateOf<Campaign?>(null) }
+
     var newTitle by remember { mutableStateOf("") }
     var newDescription by remember { mutableStateOf("") }
     var newDate by remember { mutableStateOf("") }
+    var newSegment by remember { mutableStateOf("Todos") }
+
+    // Preencher dados ao editar
+    LaunchedEffect(editingCampaign) {
+        editingCampaign?.let {
+            newTitle = it.title
+            newDescription = it.description
+            newDate = it.date
+            newSegment = it.segment
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -63,11 +70,15 @@ fun CampaignsScreen() {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showNewCampaignDialog = true }) {
+            FloatingActionButton(onClick = {
+                editingCampaign = null
+                showNewCampaignDialog = true
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Nova Campanha")
             }
         }
     ) { paddingValues ->
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -76,7 +87,13 @@ fun CampaignsScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(campaigns, key = { it.id }) { campaign ->
-                CampaignCardExpandable(campaign)
+                CampaignCardExpandable(
+                    campaign = campaign,
+                    onEdit = {
+                        editingCampaign = campaign
+                        showNewCampaignDialog = true
+                    }
+                )
             }
         }
     }
@@ -84,9 +101,10 @@ fun CampaignsScreen() {
     if (showNewCampaignDialog) {
         AlertDialog(
             onDismissRequest = { showNewCampaignDialog = false },
-            title = { Text("Nova Campanha") },
+            title = { Text(if (editingCampaign != null) "Editar Campanha" else "Nova Campanha") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
                     OutlinedTextField(
                         value = newTitle,
                         onValueChange = { newTitle = it },
@@ -107,33 +125,69 @@ fun CampaignsScreen() {
                         label = { Text("Data") },
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    OutlinedTextField(
+                        value = newSegment,
+                        onValueChange = { newSegment = it },
+                        label = { Text("Segmento") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (newTitle.isNotBlank() && newDescription.isNotBlank() && newDate.isNotBlank()) {
-                        val nextId = (campaigns.maxOfOrNull { it.id } ?: 0) + 1
-                        campaigns.add(
-                            Campaign(
-                                id = nextId,
-                                title = newTitle.trim(),
-                                description = newDescription.trim(),
-                                date = newDate.trim(),
-                                imageUrl = null
-                            )
-                        )
 
+                    if (newTitle.isNotBlank() && newDescription.isNotBlank() && newDate.isNotBlank()) {
+
+                        if (editingCampaign != null) {
+                            // EDITAR
+                            val index = campaigns.indexOfFirst { it.id == editingCampaign!!.id }
+
+                            if (index != -1) {
+                                campaigns[index] = Campaign(
+                                    id = editingCampaign!!.id,
+                                    title = newTitle.trim(),
+                                    description = newDescription.trim(),
+                                    date = newDate.trim(),
+                                    segment = newSegment.trim().ifBlank { "Todos" },
+                                    imageUrl = editingCampaign!!.imageUrl
+                                )
+                            }
+
+                        } else {
+                            // NOVO
+                            val nextId = (campaigns.maxOfOrNull { it.id } ?: 0) + 1
+
+                            campaigns.add(
+                                Campaign(
+                                    id = nextId,
+                                    title = newTitle.trim(),
+                                    description = newDescription.trim(),
+                                    date = newDate.trim(),
+                                    segment = newSegment.trim().ifBlank { "Todos" },
+                                    imageUrl = null
+                                )
+                            )
+                        }
+
+                        // limpar
                         newTitle = ""
                         newDescription = ""
                         newDate = ""
+                        newSegment = "Todos"
+                        editingCampaign = null
                         showNewCampaignDialog = false
                     }
+
                 }) {
                     Text("Salvar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showNewCampaignDialog = false }) {
+                TextButton(onClick = {
+                    editingCampaign = null
+                    showNewCampaignDialog = false
+                }) {
                     Text("Cancelar")
                 }
             }
@@ -142,7 +196,10 @@ fun CampaignsScreen() {
 }
 
 @Composable
-fun CampaignCardExpandable(campaign: Campaign) {
+fun CampaignCardExpandable(
+    campaign: Campaign,
+    onEdit: () -> Unit
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var isConfirmed by rememberSaveable { mutableStateOf(false) }
     var showMessage by remember { mutableStateOf(false) }
@@ -153,6 +210,7 @@ fun CampaignCardExpandable(campaign: Campaign) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
+
             campaign.imageUrl?.let {
                 Image(
                     painter = painterResource(id = it),
@@ -166,31 +224,38 @@ fun CampaignCardExpandable(campaign: Campaign) {
             }
 
             Column(modifier = Modifier.padding(16.dp)) {
+
                 Text(campaign.title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+
                 Spacer(modifier = Modifier.height(4.dp))
+
                 Text(
-                    campaign.description,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Segmento: ${campaign.segment}",
+                    style = MaterialTheme.typography.labelMedium,
                     color = Color.Gray
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(campaign.description, color = Color.Gray)
+
                 Spacer(modifier = Modifier.height(12.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.DateRange, contentDescription = "Data", tint = Color.Gray)
+                    Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.Gray)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        campaign.date,
-                        color = Color.Gray,
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    Text(campaign.date, color = Color.Gray)
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row {
+
                     Button(
-                        onClick = { expanded = !expanded },
+                        onClick = onEdit,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (expanded) "Ocultar detalhes" else "Ver detalhes")
+                        Text("Editar")
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -200,11 +265,7 @@ fun CampaignCardExpandable(campaign: Campaign) {
                             isConfirmed = true
                             showMessage = true
                         },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (isConfirmed) Color(0xFF4CAF50) else Color.Transparent,
-                            contentColor = if (isConfirmed) Color.White else MaterialTheme.colorScheme.onSurface
-                        )
+                        modifier = Modifier.weight(1f)
                     ) {
                         Text(if (isConfirmed) "Confirmado" else "Confirmar presença")
                     }
@@ -212,50 +273,12 @@ fun CampaignCardExpandable(campaign: Campaign) {
 
                 if (expanded) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = when (campaign.id) {
-                            1 -> """
-                                O Feirão WTC é a oportunidade perfeita para aproveitar grandes descontos exclusivos.
-                                Durante o evento, produtos e serviços estarão com até 40% de desconto.
-                                Além das ofertas, é uma excelente chance de fazer networking e conhecer novas empresas.
-                                O Feirão ocorre entre os dias 15 e 20 de outubro.
-                            """.trimIndent()
-
-                            2 -> """
-                                O WTC Summit 2024 reúne os maiores líderes e especialistas do mercado.
-                                Um dia inteiro de palestras e workshops sobre inovação e negócios.
-                                O evento será em 25 de novembro, com ampla programação de networking.
-                            """.trimIndent()
-
-                            3 -> """
-                                O Happy Hour de Negócios ocorre toda sexta-feira.
-                                Um ambiente descontraído para conhecer novos parceiros e líderes do setor.
-                                Perfeito para trocar ideias e fortalecer conexões profissionais.
-                            """.trimIndent()
-
-                            else -> "Detalhes da campanha: ${campaign.description}"
-                        },
-                        fontSize = 14.sp
-                    )
+                    Text("Detalhes da campanha: ${campaign.description}")
                 }
 
                 if (showMessage) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(8.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50))
-                        ) {
-                            Text(
-                                text = "Presença confirmada!",
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
-                    }
+                    Text("Presença confirmada!", color = Color.Green)
                 }
             }
         }
