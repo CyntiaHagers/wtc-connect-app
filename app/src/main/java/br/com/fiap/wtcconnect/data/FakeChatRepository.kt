@@ -94,28 +94,28 @@ class FakeChatRepository(private val currentUserId: String = "me", private val c
 
         _messages[conv1.id] = MutableStateFlow(
             listOf(
-                Message(id = "m1", conversationId = conv1.id, senderId = user1.id, content = "Oi", timestamp = System.currentTimeMillis() - 1000L * 60 * 60, delivered = true),
-                Message(id = "m2", conversationId = conv1.id, senderId = currentUserId, content = "Tudo bem?", timestamp = System.currentTimeMillis() - 1000L * 60 * 50, delivered = true)
+                Message(id = "m1", customerId = conv1.id, senderId = user1.id, senderRole = "Client", content = "Oi", status = MessageStatus.Delivered, createdAt = System.currentTimeMillis() - 1000L * 60 * 60, deliveredAt = System.currentTimeMillis() - 1000L * 60 * 59),
+                Message(id = "m2", customerId = conv1.id, senderId = currentUserId, senderRole = "Client", content = "Tudo bem?", status = MessageStatus.Delivered, createdAt = System.currentTimeMillis() - 1000L * 60 * 50, deliveredAt = System.currentTimeMillis() - 1000L * 60 * 49)
             )
         )
 
         _messages[conv2.id] = MutableStateFlow(
             listOf(
-                Message(id = "m3", conversationId = conv2.id, senderId = user2.id, content = "Olá, pode me ajudar?", timestamp = System.currentTimeMillis() - 1000L * 60 * 30, delivered = true)
+                Message(id = "m3", customerId = conv2.id, senderId = user2.id, senderRole = "Client", content = "Olá, pode me ajudar?", status = MessageStatus.Delivered, createdAt = System.currentTimeMillis() - 1000L * 60 * 30, deliveredAt = System.currentTimeMillis() - 1000L * 60 * 29)
             )
         )
 
         _messages[conv3.id] = MutableStateFlow(
             listOf(
-                Message(id = "m4", conversationId = conv3.id, senderId = user3.id, content = "Agenda enviada", timestamp = System.currentTimeMillis() - 1000L * 60 * 10, delivered = true)
+                Message(id = "m4", customerId = conv3.id, senderId = user3.id, senderRole = "Client", content = "Agenda enviada", status = MessageStatus.Delivered, createdAt = System.currentTimeMillis() - 1000L * 60 * 10, deliveredAt = System.currentTimeMillis() - 1000L * 60 * 9)
             )
         )
 
         // Mensagens iniciais do chat de grupo
         _messages[groupConv.id] = MutableStateFlow(
             listOf(
-                Message(id = "gm1", conversationId = groupConv.id, senderId = user1.id, content = "Bem-vindos ao WTC Connect!", timestamp = System.currentTimeMillis() - 1000L * 60 * 60, delivered = true),
-                Message(id = "gm2", conversationId = groupConv.id, senderId = user3.id, content = "Olá a todos!", timestamp = System.currentTimeMillis() - 1000L * 60 * 30, delivered = true)
+                Message(id = "gm1", customerId = groupConv.id, senderId = user1.id, senderRole = "Client", content = "Bem-vindos ao WTC Connect!", status = MessageStatus.Delivered, createdAt = System.currentTimeMillis() - 1000L * 60 * 60, deliveredAt = System.currentTimeMillis() - 1000L * 60 * 59),
+                Message(id = "gm2", customerId = groupConv.id, senderId = user3.id, senderRole = "Client", content = "Olá a todos!", status = MessageStatus.Delivered, createdAt = System.currentTimeMillis() - 1000L * 60 * 30, deliveredAt = System.currentTimeMillis() - 1000L * 60 * 29)
             )
         )
     }
@@ -132,11 +132,13 @@ class FakeChatRepository(private val currentUserId: String = "me", private val c
         val now = System.currentTimeMillis()
         val msg = Message(
             id = UUID.randomUUID().toString(),
-            conversationId = conversationId,
+            customerId = conversationId,
             senderId = senderId,
+            senderRole = "Client",
             content = content,
-            timestamp = now,
-            delivered = true
+            status = MessageStatus.Delivered,
+            createdAt = now,
+            deliveredAt = now
         )
 
         val flow = _messages.getOrPut(conversationId) { MutableStateFlow(emptyList()) }

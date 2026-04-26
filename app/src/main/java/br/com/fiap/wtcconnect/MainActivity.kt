@@ -16,6 +16,7 @@ import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme // <-- Use the correct theme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppContainer.init(applicationContext)
         setContent {
             WtcCrmTheme { // This was already correct
                 // A surface container using the 'background' color from the theme

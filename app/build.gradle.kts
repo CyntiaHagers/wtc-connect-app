@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     // alias(libs.plugins.kotlin.compose)
     id("com.android.application")
-    id("com.google.gms.google-services")
 }
 
 android {
@@ -84,6 +83,12 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.microsoft.signalr:signalr:7.0.0")
+    implementation("io.reactivex.rxjava3:rxjava:3.1.8")
 
     // Testes
     testImplementation(libs.junit)

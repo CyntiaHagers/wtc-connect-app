@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import br.com.fiap.wtcconnect.AppContainer
 import br.com.fiap.wtcconnect.screens.campaigns.CampaignsScreen
 import br.com.fiap.wtcconnect.screens.ChatScreen
 import br.com.fiap.wtcconnect.screens.ConversationListScreen
@@ -109,29 +110,26 @@ fun BottomNavigationBar(navController: NavController, items: List<BottomNavItem>
 
 @Composable
 fun NavigationGraph(navController: androidx.navigation.NavHostController, authViewModel: AuthViewModel) {
-    // Cria um repositório compartilhado entre a lista de conversas e as telas de chat
-    // Passa informações do usuário autenticado (id/email) para que o repositório fake saiba o contexto
     val authState by authViewModel.authState.collectAsState()
-    val sharedRepo = remember(authState.userId, authState.userEmail) {
+    val fakeGroupRepo = remember(authState.userId, authState.userEmail) {
         br.com.fiap.wtcconnect.data.FakeChatRepository(currentUserId = authState.userId ?: "me", currentUserEmail = authState.userEmail)
     }
+    val remoteChatRepo = remember(authState.userId, authState.token) {
+        AppContainer.provideChatRepository()
+    }
+
     NavHost(navController, startDestination = BottomNavItem.Chat.route) {
-        // Rota 'chat' agora apresenta a lista de conversas (ConversationListScreen)
         composable(BottomNavItem.Chat.route) {
-            // Exibe a lista de conversas usando o repositório compartilhado
-            ConversationListScreen(navController = navController, repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+            ConversationListScreen(navController = navController, repository = remoteChatRepo, currentUserId = authState.userId, currentUserType = authState.userType)
         }
-        // Rota com argumentos para abrir o chat 1:1 com conversationId e peerUserId
         composable("chat/{conversationId}/{peerUserId}") { backStackEntry ->
             val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
             val peerUserId = backStackEntry.arguments?.getString("peerUserId") ?: ""
-            // Usa o mesmo repositório compartilhado para que mensagens/estado sejam visíveis entre telas
-            ChatScreen(navController = navController, conversationId = conversationId, peerUserId = peerUserId, repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+            ChatScreen(navController = navController, conversationId = conversationId, peerUserId = peerUserId, repository = remoteChatRepo, currentUserId = authState.userId, currentUserType = authState.userType)
         }
-        // Rota para chat de grupo (broadcast)
         composable("group_chat/{groupId}") { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-            ChatScreen(navController = navController, conversationId = "group_$groupId", peerUserId = "group:$groupId", repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+            ChatScreen(navController = navController, conversationId = "group_$groupId", peerUserId = "group:$groupId", repository = fakeGroupRepo, currentUserId = authState.userId, currentUserType = authState.userType)
         }
         composable(BottomNavItem.Campaigns.route) { CampaignsScreen() }
         composable(BottomNavItem.Clients.route) { ClientsScreen(
@@ -140,8 +138,7 @@ fun NavigationGraph(navController: androidx.navigation.NavHostController, authVi
             }
         ) }
         composable(BottomNavItem.Groups.route) {
-            // Chamada direta da tela de Grupos (tratamento de erros deve ser interno à tela)
-            GroupsScreen(navController = navController, repository = sharedRepo, currentUserId = authState.userId, currentUserType = authState.userType)
+            GroupsScreen(navController = navController, repository = fakeGroupRepo, currentUserId = authState.userId, currentUserType = authState.userType)
         }
         composable(BottomNavItem.Profile.route) {
             ProfileScreen(

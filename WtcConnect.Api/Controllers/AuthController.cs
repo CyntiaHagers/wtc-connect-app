@@ -17,42 +17,54 @@ public class AuthController : ControllerBase
         _userService = userService;
     }
 
-    // 🔹 REGISTER (novo)
+    // 🔹 REGISTER
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] User user)
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var existing = await _userService.GetByEmailAsync(user.Email);
+        var existing = await _userService.GetByEmailAsync(request.Email);
 
         if (existing != null)
             return BadRequest(new { message = "Usuário já existe" });
 
-        if (string.IsNullOrEmpty(user.Role))
-            user.Role = "Client";
+        var user = new User
+        {
+            Email = request.Email,
+            Password = request.Password,
+            Role = string.IsNullOrWhiteSpace(request.Role) ? "Client" : request.Role
+        };
 
         await _userService.CreateAsync(user);
 
-        return Ok(new { message = "Usuário criado com sucesso" });
+        var token = _jwtService.GenerateToken(user);
+
+        return Ok(new AuthResponse
+        {
+            Token = token,
+            UserId = user.Id ?? string.Empty,
+            Email = user.Email,
+            Role = user.Role
+        });
     }
 
-    // 🔹 LOGIN (corrigido)
+    // 🔹 LOGIN
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] User login)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var user = await _userService.GetByEmailAsync(login.Email);
+        var user = await _userService.GetByEmailAsync(request.Email);
 
-        if (user == null || user.Password != login.Password)
+        if (user == null || user.Password != request.Password)
         {
             return Unauthorized(new { message = "Credenciais inválidas" });
         }
 
         var token = _jwtService.GenerateToken(user);
 
-        return Ok(new
+        return Ok(new AuthResponse
         {
-            token,
-            id = user.Id,
-            role = user.Role,
-            email = user.Email
+            Token = token,
+            UserId = user.Id ?? string.Empty,
+            Role = user.Role,
+            Email = user.Email
         });
     }
 }
