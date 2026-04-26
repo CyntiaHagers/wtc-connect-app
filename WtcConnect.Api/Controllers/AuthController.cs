@@ -50,6 +50,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             token,
+            id = user.Id,
             role = user.Role,
             email = user.Email
         });

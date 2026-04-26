@@ -30,6 +30,8 @@ builder.Services.AddSingleton<JwtService>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<MessageService>();
 builder.Services.AddSingleton<CampaignService>();
+builder.Services.AddSingleton<CustomerService>();
+builder.Services.AddSingleton<SegmentService>();
 builder.Services.AddSignalR();
 
 // CONFIG JWT 
