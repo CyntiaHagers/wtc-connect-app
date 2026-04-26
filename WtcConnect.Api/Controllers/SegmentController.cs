@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using WtcConnect.Api.Requests.Segments;
 using WtcConnect.Api.Services;
 
 namespace WtcConnect.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("segment")]
 public class SegmentController : ControllerBase
 {

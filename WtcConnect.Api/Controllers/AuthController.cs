@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WtcConnect.Api.Models;
 using WtcConnect.Api.Services;
@@ -19,6 +20,7 @@ public class AuthController : ControllerBase
 
     // 🔹 REGISTER
     [HttpPost("register")]
+    [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         var existing = await _userService.GetByEmailAsync(request.Email);
@@ -48,6 +50,7 @@ public class AuthController : ControllerBase
 
     // 🔹 LOGIN
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var user = await _userService.GetByEmailAsync(request.Email);
