@@ -32,7 +32,6 @@ import br.com.fiap.wtcconnect.ui.theme.RoyalBlue
 import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
 import br.com.fiap.wtcconnect.viewmodel.AuthViewModel
 import br.com.fiap.wtcconnect.viewmodel.UserType
-import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun LoginScreen(
@@ -46,13 +45,8 @@ fun LoginScreen(
     var isOperator by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
     LaunchedEffect(authState.isAuthenticated) {
         if (authState.isAuthenticated) {
-            // register pending fcm token if present
-            authState.userId?.let { uid ->
-                br.com.fiap.wtcconnect.notifications.FcmTokenManager.registerPendingTokenIfAny(context, uid)
-            }
             onLoginSuccess(authState.userType)
         }
     }

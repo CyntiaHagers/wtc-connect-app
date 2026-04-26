@@ -36,7 +36,7 @@ import br.com.fiap.wtcconnect.ui.theme.RoyalBlue
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(navController: NavController, conversationId: String, peerUserId: String, repository: ChatRepository? = null, currentUserId: String? = null, currentUserType: br.com.fiap.wtcconnect.viewmodel.UserType = br.com.fiap.wtcconnect.viewmodel.UserType.CLIENT) {
-    val repo = repository ?: FakeChatRepository()
+    val repo = repository ?: FakeChatRepository(currentUserId = currentUserId ?: "me")
     // Cria ViewModel com factory passando conversationId e currentUserId
     val effectiveUserId = currentUserId ?: "me"
     val vm: ChatViewModel = viewModel(factory = ChatViewModelFactory(repo, conversationId, effectiveUserId))
@@ -232,7 +232,7 @@ fun MessageRow(message: Message, isMe: Boolean, senderName: String? = null) {
                 .padding(8.dp)) {
                 Text(text = message.content, color = Color.White)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = formatTime(message.timestamp), fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.align(Alignment.End))
+                Text(text = formatTime(message.createdAt), fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.align(Alignment.End))
             }
         }
     } else {
@@ -259,7 +259,7 @@ fun MessageRow(message: Message, isMe: Boolean, senderName: String? = null) {
                 }
                 Text(text = message.content, color = Color.Black)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = formatTime(message.timestamp), fontSize = 10.sp, color = Color.Gray)
+                Text(text = formatTime(message.createdAt), fontSize = 10.sp, color = Color.Gray)
             }
         }
     }
