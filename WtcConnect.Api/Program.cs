@@ -89,7 +89,10 @@ app.UseSwaggerUI(c =>
 });
 
 // 🔹 Middlewares
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 
 app.UseAuthentication();

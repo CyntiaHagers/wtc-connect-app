@@ -17,6 +17,7 @@ import androidx.navigation.NavController
 import br.com.fiap.wtcconnect.ui.theme.RoyalBlue
 import br.com.fiap.wtcconnect.ui.theme.WtcCrmTheme
 import br.com.fiap.wtcconnect.ui.theme.White
+import br.com.fiap.wtcconnect.data.ChatRepository
 import br.com.fiap.wtcconnect.data.Conversation
 import br.com.fiap.wtcconnect.data.FakeChatRepository
 import br.com.fiap.wtcconnect.presentation.ConversationListViewModel
@@ -32,9 +33,8 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConversationListScreen(navController: NavController, repository: FakeChatRepository? = null, currentUserId: String? = null, currentUserType: br.com.fiap.wtcconnect.viewmodel.UserType = br.com.fiap.wtcconnect.viewmodel.UserType.CLIENT) {
-    // Usa repositório fake por padrão; em produção injetar via Hilt/DI
-    val repo = repository ?: FakeChatRepository()
+fun ConversationListScreen(navController: NavController, repository: ChatRepository? = null, currentUserId: String? = null, currentUserType: br.com.fiap.wtcconnect.viewmodel.UserType = br.com.fiap.wtcconnect.viewmodel.UserType.CLIENT) {
+    val repo = repository ?: FakeChatRepository(currentUserId = currentUserId ?: "me")
     val vm: ConversationListViewModel = viewModel(factory = ConversationListViewModelFactory(repo))
     val state by vm.uiState.collectAsState()
     // Computa a lista filtrada localmente a partir do state do ViewModel.
@@ -65,7 +65,7 @@ fun ConversationListScreen(navController: NavController, repository: FakeChatRep
 
     val list = remember(state.conversations, state.query, effectiveGroupId, groupMemberIds, currentUserType) {
         val q = state.query.trim()
-        val base = if (currentUserType == br.com.fiap.wtcconnect.viewmodel.UserType.CLIENT && effectiveGroupId != null) {
+        val base = if (currentUserType == br.com.fiap.wtcconnect.viewmodel.UserType.CLIENT && effectiveGroupId != null && groupMemberIds.isNotEmpty()) {
             // inclui apenas conversas cujo peerUser esteja no mesmo grupo do usuário
             state.conversations.filter { convo -> groupMemberIds.contains(convo.peerUser.id) }
         } else {

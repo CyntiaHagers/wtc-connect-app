@@ -21,12 +21,22 @@ data class Conversation(
 @Suppress("unused")
 data class Message(
     val id: String,
-    val conversationId: String,
+    val customerId: String,
     val senderId: String,
+    val senderRole: String = "Client",
     val content: String,
-    val timestamp: Long,
-    val delivered: Boolean = true
+    val status: MessageStatus = MessageStatus.Sent,
+    val campaignId: String? = null,
+    val createdAt: Long,
+    val deliveredAt: Long? = null,
+    val readAt: Long? = null
 )
+
+enum class MessageStatus {
+    Sent,
+    Delivered,
+    Read
+}
 
 // Grupo simples que contém id e nome; usuários são associados por id em FakeChatRepository
 data class Group(
