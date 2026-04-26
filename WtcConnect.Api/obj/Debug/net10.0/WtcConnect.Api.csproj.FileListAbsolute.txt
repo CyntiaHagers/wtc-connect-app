@@ -1,9 +1,0 @@
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.csproj.AssemblyReference.cache
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\rpswa.dswa.cache.json
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.GeneratedMSBuildEditorConfig.editorconfig
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.AssemblyInfoInputs.cache
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.AssemblyInfo.cs
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.csproj.CoreCompileInputs.cache
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.MvcApplicationPartsAssemblyInfo.cs
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.MvcApplicationPartsAssemblyInfo.cache
-C:\projetos\Git\wtc-connect-app\WtcConnect.Api\obj\Debug\net10.0\WtcConnect.Api.sourcelink.json
