@@ -33,3 +33,8 @@ submission/
 WhatsApp.conversas
 misc.xml
 modules.xml
+app/release/app-release.apk
+app/release/baselineProfiles/0/app-release.dm
+app/release/baselineProfiles/1/app-release.dm
+app/release/baselineProfiles/0/app-release.dm
+app/release/baselineProfiles/1/app-release.dm

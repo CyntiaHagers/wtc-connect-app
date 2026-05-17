@@ -19,14 +19,44 @@ val localProperties = Properties().apply {
         file.inputStream().use { load(it) }
     }
 }
+    fun resolveUrl(
+        localProperties: Properties,
+        localKey: String,
+        propertyKey: String,
+        defaultValue: String
+    ): String {
+        return localProperties.getProperty(localKey)
+            ?: findProperty(propertyKey)?.toString()
+            ?: defaultValue
+    }
 
-val apiBaseUrl = (localProperties.getProperty("api.base.url")
-    ?: findProperty("apiBaseUrl")?.toString()
-    ?: "http://10.0.2.2:5281/")
+    val debugApiBaseUrl = resolveUrl(
+        localProperties = localProperties,
+        localKey = "api.base.url",
+        propertyKey = "apiBaseUrl",
+        defaultValue = "http://10.0.2.2:5281/"
+    )
 
-val signalrHubUrl = (localProperties.getProperty("signalr.hub.url")
-    ?: findProperty("signalrHubUrl")?.toString()
-    ?: "${apiBaseUrl.trimEnd('/')}/chat")
+    val debugSignalrHubUrl = resolveUrl(
+        localProperties = localProperties,
+        localKey = "signalr.hub.url",
+        propertyKey = "signalrHubUrl",
+        defaultValue = "${debugApiBaseUrl.trimEnd('/')}/chat"
+    )
+
+    val releaseApiBaseUrl = resolveUrl(
+        localProperties = localProperties,
+        localKey = "release.api.base.url",
+        propertyKey = "releaseApiBaseUrl",
+        defaultValue = "https://wtc-connect-app.onrender.com/"
+    )
+
+    val releaseSignalrHubUrl = resolveUrl(
+        localProperties = localProperties,
+        localKey = "release.signalr.hub.url",
+        propertyKey = "releaseSignalrHubUrl",
+        defaultValue = "${releaseApiBaseUrl.trimEnd('/')}/chat"
+    )
 
 android {
     namespace = "br.com.fiap.wtcconnect"
@@ -44,13 +74,20 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "API_BASE_URL", apiBaseUrl.asBuildConfigString())
-        buildConfigField("String", "SIGNALR_HUB_URL", signalrHubUrl.asBuildConfigString())
+            buildConfigField("String", "API_BASE_URL", debugApiBaseUrl.asBuildConfigString())
+            buildConfigField("String", "SIGNALR_HUB_URL", debugSignalrHubUrl.asBuildConfigString())
     }
 
     buildTypes {
+            debug {
+                buildConfigField("String", "API_BASE_URL", debugApiBaseUrl.asBuildConfigString())
+                buildConfigField("String", "SIGNALR_HUB_URL", debugSignalrHubUrl.asBuildConfigString())
+            }
+
         release {
             isMinifyEnabled = false
+                buildConfigField("String", "API_BASE_URL", releaseApiBaseUrl.asBuildConfigString())
+                buildConfigField("String", "SIGNALR_HUB_URL", releaseSignalrHubUrl.asBuildConfigString())
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
